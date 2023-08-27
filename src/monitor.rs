@@ -1,7 +1,8 @@
 use std::default::Default;
 pub mod config;
-use rumqttc::{AsyncClient, Client, MqttOptions, Outgoing, QoS};
+use rumqttc::{AsyncClient, MqttOptions, QoS};
 use std::fmt;
+use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::task;
@@ -9,22 +10,28 @@ use tokio::time::sleep;
 
 pub struct Monitor {
     config: config::Config,
-    path: String,
     mqtt_options: MqttOptions,
     stop: AtomicBool,
 }
 
 impl Monitor {
-    pub fn new(config: &config::Config, path: String) -> Monitor {
-        let mut mqtt_options = MqttOptions::new(&config.id, &config.broker, config.port);
-        mqtt_options.set_credentials(&config.username, &config.password);
+    pub fn new(config: &config::Config) -> Monitor {
+        let mut mqtt_options = MqttOptions::new(
+            &config.mqtt_config.id,
+            &config.mqtt_config.broker,
+            config.mqtt_config.port,
+        );
+        mqtt_options.set_credentials(&config.mqtt_config.username, &config.mqtt_config.password);
         mqtt_options.set_keep_alive(Duration::from_secs(5));
 
-        log::info!("Connecting to broker: {}:{}", config.broker, config.port);
+        log::info!(
+            "Connecting to broker: {}:{}",
+            config.mqtt_config.broker,
+            config.mqtt_config.port
+        );
 
         Monitor {
             config: config.clone(),
-            path,
             mqtt_options,
             stop: AtomicBool::new(false),
         }
@@ -39,35 +46,43 @@ impl Monitor {
             }
         });
 
-        self.notify(&client, &"start".to_string()).await;
+        self.notify(&client, &"start1".to_string()).await;
+
         while !self.stop.load(Ordering::Relaxed) {
-            sleep(std::time::Duration::from_secs(5)).await;
+            sleep(std::time::Duration::from_millis(500)).await;
+            let mut user_input = String::new();
+            let stdin = io::stdin();
+            let _ = stdin.read_line(&mut user_input);
+
+            if user_input.trim() == "stop" {
+                self.stop.store(true, Ordering::Relaxed);
+            } else {
+                self.notify(&client, &user_input).await;
+            }
         }
     }
 
     async fn publish(client: &AsyncClient, topic: &String, message: &String) {
         log::debug!("Publishing message: {}", message);
 
-        match client
+        if let Err(e) = client
             .publish(topic, QoS::AtLeastOnce, false, message.as_bytes().to_vec())
             .await
         {
-            Err(e) => log::error!("Error publishing message: {:?}", e),
-            _ => {}
+            log::error!("Error publishing message: {:?}", e);
         }
     }
 
     async fn notify(&self, client: &AsyncClient, message: &String) {
-        let topic = &self.config.topic;
-        Monitor::publish(&client, topic, message).await;
+        let topic = &self.config.mqtt_config.topic;
+        Monitor::publish(client, topic, message).await;
     }
 }
 
 impl Default for Monitor {
     fn default() -> Self {
         let config = config::Config::default();
-        let file = "/dev/hidraw0".to_string();
-        Monitor::new(&config, file)
+        Monitor::new(&config)
     }
 }
 
@@ -75,8 +90,8 @@ impl fmt::Display for Monitor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Monitor {{ config: {}, file: {} }}",
-            self.config, self.path
+            "Monitor {{ mqtt: {}, device: {} }}",
+            self.config.mqtt_config, self.config.device_config
         )
     }
 }

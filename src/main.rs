@@ -1,8 +1,4 @@
-use rumqttc::Event;
-use rumqttc::{Client, MqttOptions, Outgoing, QoS};
 use simple_logger::SimpleLogger;
-use std::thread;
-use std::time::Duration;
 use usb_rfid_decoder as decoder;
 mod monitor;
 use monitor::config;
@@ -28,7 +24,9 @@ async fn main() {
     };
     log::info!("Config Loaded: {}", conf);
 
-    let monitor = monitor::Monitor::new(&conf, "dummy".to_string());
+
+
+    let monitor = monitor::Monitor::new(&conf);
 
     monitor.run().await;
 }
