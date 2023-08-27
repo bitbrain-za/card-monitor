@@ -2,6 +2,7 @@ use simple_logger::SimpleLogger;
 use usb_rfid_decoder as decoder;
 mod monitor;
 use monitor::config;
+use monitor::homeassistant;
 
 #[tokio::main]
 async fn main() {
@@ -24,9 +25,9 @@ async fn main() {
     };
     log::info!("Config Loaded: {}", conf);
 
-
+    let disco = homeassistant::Discovery::card_monitor(&conf);
+    log::info!("Discovery: {}", disco);
 
     let monitor = monitor::Monitor::new(&conf);
-
     monitor.run().await;
 }

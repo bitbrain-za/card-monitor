@@ -1,17 +1,19 @@
 use std::default::Default;
 use std::fmt;
 use std::fs::File;
+use uuid::Uuid;
 
-#[derive(Clone, Default, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Config {
+    pub id: String,
+    pub friendly_name: String,
     pub mqtt_config: MqttConfig,
     pub device_config: DeviceConfig,
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct MqttConfig {
-    pub id: String,
     pub broker: String,
     pub port: u16,
     pub username: String,
@@ -38,6 +40,10 @@ impl Config {
         serde_json::to_writer_pretty(file, self)
             .map_err(|e| format!("Failed to write config file: {}", e))?;
         Ok(())
+    }
+
+    pub fn base_topic(&self) -> String {
+        format!("{}/{}", self.mqtt_config.topic, self.id)
     }
 }
 
@@ -67,10 +73,20 @@ impl fmt::Display for DeviceConfig {
     }
 }
 
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            id: format!("card-monitor_{}", Uuid::new_v4()),
+            friendly_name: "Card Monitor".to_string(),
+            mqtt_config: MqttConfig::default(),
+            device_config: DeviceConfig::default(),
+        }
+    }
+}
+
 impl Default for MqttConfig {
     fn default() -> Self {
         MqttConfig {
-            id: "card-monitor".to_string(),
             broker: "localhost".to_string(),
             port: 1883,
             username: "username".to_string(),

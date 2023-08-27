@@ -79,6 +79,7 @@ dependencies = [
  "simple_logger",
  "tokio",
  "usb-rfid-decoder",
+ "uuid",
 ]
 
 [[package]]
@@ -863,6 +864,15 @@ name = "usb-rfid-decoder"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5c70a8f11c16fd44f4c7e403f25da19497bacbb6bf2c8547459d5ea0c051dc8"
+
+[[package]]
+name = "uuid"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79daa5ed5740825c40b389c5e50312b9c86df53fccd33f281df655642b43869d"
+dependencies = [
+ "getrandom",
+]
 
 [[package]]
 name = "wasi"

@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::task;
 use tokio::time::sleep;
+pub mod homeassistant;
 
 pub struct Monitor {
     config: config::Config,
@@ -17,7 +18,7 @@ pub struct Monitor {
 impl Monitor {
     pub fn new(config: &config::Config) -> Monitor {
         let mut mqtt_options = MqttOptions::new(
-            &config.mqtt_config.id,
+            &config.id,
             &config.mqtt_config.broker,
             config.mqtt_config.port,
         );
@@ -63,7 +64,7 @@ impl Monitor {
     }
 
     async fn publish(client: &AsyncClient, topic: &String, message: &String) {
-        log::debug!("Publishing message: {}", message);
+        log::debug!("Publishing message: {} to {}", message, topic);
 
         if let Err(e) = client
             .publish(topic, QoS::AtLeastOnce, false, message.as_bytes().to_vec())
@@ -74,8 +75,8 @@ impl Monitor {
     }
 
     async fn notify(&self, client: &AsyncClient, message: &String) {
-        let topic = &self.config.mqtt_config.topic;
-        Monitor::publish(client, topic, message).await;
+        let topic = format!("{}/{}", self.config.mqtt_config.topic, self.config.id);
+        Monitor::publish(client, &topic, message).await;
     }
 }
 
