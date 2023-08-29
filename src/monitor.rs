@@ -8,7 +8,7 @@ use tokio::task;
 pub mod homeassistant;
 use std::fs::File;
 use std::io::BufReader;
-use std::io::Read;
+use std::io::BufRead;
 use usb_rfid_decoder as decoder;
 
 pub struct Monitor {
@@ -55,18 +55,12 @@ impl Monitor {
             .unwrap_or_else(|_| panic!("Unable to open {}", self.config.device_config.path));
         let mut reader = BufReader::new(file);
 
-        let mut buf = [0u8; 512];
+        let mut buf = Vec::new();
         while !self.stop.load(Ordering::Relaxed) {
-            let n = match reader.read(&mut buf) {
+            let n = match reader.read_until(0x28, &mut buf) {
                 Ok(n) => n,
                 _ => 0,
             };
-
-            if n != 0 {
-                for (i, c) in buf.iter().enumerate().take(n) {
-                    log::debug!("{} - {:#x}", i, c);
-                }
-            }
             if n >= 8 {
                 if let Ok(result) = decoder::decode(&buf) {
                     log::debug!("Decoded Card: {:?}", result);
