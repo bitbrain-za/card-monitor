@@ -1,16 +1,18 @@
-use simple_logger::SimpleLogger;
 mod monitor;
 use monitor::config;
 use monitor::homeassistant;
 use std::env;
+use log::LevelFilter;
+use systemd_journal_logger::JournalLog;
 
 #[tokio::main]
 async fn main() {
-    SimpleLogger::new().init().unwrap();
+    JournalLog::default().install().unwrap();
+    log::set_max_level(LevelFilter::Debug);
     let args: Vec<String> = env::args().collect();
     log::debug!("{:?}", args);
 
-    let config_path = match args.get(2) {
+    let config_path = match args.get(1) {
         Some(p) => p,
         None => "config.json",
     };
