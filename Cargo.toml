@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-usb-rfid-decoder = "0.1.0"
+usb-rfid-decoder = "0.2.1"
 rumqttc = "0.22.0"
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = "1.0.105"

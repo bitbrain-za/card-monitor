@@ -1,25 +1,26 @@
 use simple_logger::SimpleLogger;
-use usb_rfid_decoder as decoder;
 mod monitor;
 use monitor::config;
 use monitor::homeassistant;
+use std::env;
 
 #[tokio::main]
 async fn main() {
     SimpleLogger::new().init().unwrap();
+    let args: Vec<String> = env::args().collect();
+    log::debug!("{:?}", args);
 
-    const CARD: [u16; 11] = [
-        0x27, 0x27, 0x27, 0x1f, 0x22, 0x20, 0x27, 0x24, 0x25, 0x22, 0x28,
-    ];
-    let result = decoder::decode(&CARD);
-    log::debug!("{:?}", result.unwrap());
+    let config_path = match args.get(2) {
+        Some(p) => p,
+        None => "config.json",
+    };
 
-    let conf = match config::load("config.json") {
+    let conf = match config::load(config_path) {
         Ok(conf) => conf,
         Err(e) => {
             println!("{}", e);
             let conf = config::Config::default();
-            conf.save("config.json").unwrap();
+            conf.save(config_path).expect("Error saving config");
             conf
         }
     };

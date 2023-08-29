@@ -861,9 +861,9 @@ checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "usb-rfid-decoder"
-version = "0.1.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5c70a8f11c16fd44f4c7e403f25da19497bacbb6bf2c8547459d5ea0c051dc8"
+checksum = "b057418cb4df55fa34fd0d629c5521d24289874c7a17833c8683e567e97e15ad"
 
 [[package]]
 name = "uuid"

@@ -2,12 +2,14 @@ use std::default::Default;
 pub mod config;
 use rumqttc::{AsyncClient, MqttOptions, QoS};
 use std::fmt;
-use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::task;
-use tokio::time::sleep;
 pub mod homeassistant;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::Read;
+use usb_rfid_decoder as decoder;
 
 pub struct Monitor {
     config: config::Config,
@@ -47,18 +49,29 @@ impl Monitor {
             }
         });
 
-        self.notify(&client, &"start1".to_string()).await;
+        let disco_message = homeassistant::Discovery::card_monitor(&self.config);
+        Monitor::publish(&client, &disco_message.topic(), &disco_message.to_string()).await;
+        let file = File::open(&self.config.device_config.path)
+            .unwrap_or_else(|_| panic!("Unable to open {}", self.config.device_config.path));
+        let mut reader = BufReader::new(file);
 
+        let mut buf = [0u8; 512];
         while !self.stop.load(Ordering::Relaxed) {
-            sleep(std::time::Duration::from_millis(500)).await;
-            let mut user_input = String::new();
-            let stdin = io::stdin();
-            let _ = stdin.read_line(&mut user_input);
+            let n = match reader.read(&mut buf) {
+                Ok(n) => n,
+                _ => 0,
+            };
 
-            if user_input.trim() == "stop" {
-                self.stop.store(true, Ordering::Relaxed);
-            } else {
-                self.notify(&client, &user_input).await;
+            if n != 0 {
+                for (i, c) in buf.iter().enumerate().take(n) {
+                    log::debug!("{} - {:#x}", i, c);
+                }
+            }
+            if n >= 8 {
+                if let Ok(result) = decoder::decode(&buf) {
+                    log::debug!("Decoded Card: {:?}", result);
+                    self.notify(&client, &result).await;
+                }
             }
         }
     }
@@ -74,9 +87,10 @@ impl Monitor {
         }
     }
 
-    async fn notify(&self, client: &AsyncClient, message: &String) {
-        let topic = format!("{}/{}", self.config.mqtt_config.topic, self.config.id);
-        Monitor::publish(client, &topic, message).await;
+    async fn notify(&self, client: &AsyncClient, message: &str) {
+        let topic = format!("{}/{}/value", self.config.mqtt_config.topic, self.config.id);
+        let message = format!("{{\"card\": {}}}", message.trim());
+        Monitor::publish(client, &topic, &message).await;
     }
 }
 
