@@ -7,8 +7,8 @@ use std::time::Duration;
 use tokio::task;
 pub mod homeassistant;
 use std::fs::File;
-use std::io::BufReader;
 use std::io::BufRead;
+use std::io::BufReader;
 use usb_rfid_decoder as decoder;
 
 pub struct Monitor {
@@ -25,7 +25,7 @@ impl Monitor {
             config.mqtt_config.port,
         );
         mqtt_options.set_credentials(&config.mqtt_config.username, &config.mqtt_config.password);
-        mqtt_options.set_keep_alive(Duration::from_secs(5));
+        mqtt_options.set_keep_alive(Duration::from_secs(30));
 
         log::info!(
             "Connecting to broker: {}:{}",
@@ -43,11 +43,7 @@ impl Monitor {
     pub async fn run(&self) {
         let (client, mut connection) = AsyncClient::new(self.mqtt_options.clone(), 1);
 
-        task::spawn(async move {
-            while let Ok(notification) = connection.poll().await {
-                log::debug!("Received notification: {:?}", notification);
-            }
-        });
+        task::spawn(async move { while let Ok(_notification) = connection.poll().await {} });
 
         let disco_message = homeassistant::Discovery::card_monitor(&self.config);
         Monitor::publish(&client, &disco_message.topic(), &disco_message.to_string()).await;
@@ -83,7 +79,7 @@ impl Monitor {
 
     async fn notify(&self, client: &AsyncClient, message: &str) {
         let topic = format!("{}/{}/value", self.config.mqtt_config.topic, self.config.id);
-        let message = format!("{{\"card\": {}}}", message.trim());
+        let message = format!("{{\"card\": \"{}\"}}", message.trim());
         Monitor::publish(client, &topic, &message).await;
     }
 }
